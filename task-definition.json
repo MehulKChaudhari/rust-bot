@@ -1,5 +1,5 @@
 {
-    "taskDefinitionArn": "arn:aws:ecs:us-east-1:924454245830:task-definition/rustbot:1",
+    "taskDefinitionArn": "arn:aws:ecs:us-east-1:924454245830:task-definition/rustbot:3",
     "containerDefinitions": [
         {
             "name": "rustbot",
@@ -9,7 +9,7 @@
                 {
                     "name": "rustbot-80-tcp",
                     "containerPort": 80,
-                    "hostPort": 80,
+                    "hostPort": 0,
                     "protocol": "tcp",
                     "appProtocol": "http"
                 }
@@ -34,8 +34,7 @@
     ],
     "family": "rustbot",
     "executionRoleArn": "arn:aws:iam::924454245830:role/ecsTaskExecutionRole",
-    "networkMode": "awsvpc",
-    "revision": 1,
+    "revision": 3,
     "volumes": [],
     "status": "ACTIVE",
     "requiresAttributes": [
@@ -58,20 +57,15 @@
             "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
         },
         {
-            "name": "ecs.capability.task-eni"
-        },
-        {
             "name": "com.amazonaws.ecs.capability.docker-remote-api.1.29"
         }
     ],
     "placementConstraints": [],
     "compatibilities": [
-        "EC2",
-        "FARGATE"
+        "EC2"
     ],
     "requiresCompatibilities": [
-        "EC2",
-        "FARGATE"
+        "EC2"
     ],
     "cpu": "1024",
     "memory": "2048",
@@ -79,7 +73,7 @@
         "cpuArchitecture": "X86_64",
         "operatingSystemFamily": "LINUX"
     },
-    "registeredAt": "2023-11-25T21:21:54.598Z",
+    "registeredAt": "2023-11-25T21:46:58.403Z",
     "registeredBy": "arn:aws:iam::924454245830:root",
     "tags": []
 }
