@@ -17,6 +17,7 @@ struct LinkPreviewData {
     title: Value,
     description: Value,
     image: Value,
+    screenshot_url: String, // Added screenshot URL
 }
 
 // Fetch link preview data from an external Open Graph service
@@ -24,17 +25,17 @@ async fn fetch_link_preview_data(
     url: &str,
     api_key: &str,
 ) -> Result<LinkPreviewData, Box<dyn std::error::Error + Send>> {
-    // Encode the URL
     let encoded_url = encode(url);
-
-    // Construct the API endpoint with the encoded URL
     let og_url = format!(
         "https://opengraph.io/api/1.1/site/{}?app_id={}",
         encoded_url, api_key
     );
+    let screenshot_url = format!(
+        "https://opengraph.io/api/1.1/screenshot/{}?app_id={}&quality=60&dimensions=lg",
+        encoded_url, api_key
+    );
 
-    // Make the request
-    let response = match reqwest::get(&og_url).await {
+     let response = match reqwest::get(&og_url).await {
         Ok(resp) => resp,
         Err(err) => return Err(Box::new(err) as Box<dyn std::error::Error + Send>),
     };
@@ -50,6 +51,30 @@ async fn fetch_link_preview_data(
         Ok(value) => value,
         Err(err) => return Err(Box::new(err) as Box<dyn std::error::Error + Send>),
     };
+
+      let screenshot_response = match reqwest::get(&screenshot_url).await {
+        Ok(resp) => resp,
+        Err(err) => return Err(Box::new(err) as Box<dyn std::error::Error + Send>),
+    };
+
+    // Read the screenshot API response text
+    let screenshot_response_text = match screenshot_response.text().await {
+        Ok(text) => text,
+        Err(err) => return Err(Box::new(err) as Box<dyn std::error::Error + Send>),
+    };
+
+    // Parse JSON from the screenshot API response text
+    let screenshot_json: serde_json::Value = match serde_json::from_str(&screenshot_response_text) {
+        Ok(value) => value,
+        Err(err) => return Err(Box::new(err) as Box<dyn std::error::Error + Send>),
+    };
+
+    // Get the screenshot URL from the screenshot API response
+    let screenshot_url_from_api = screenshot_json
+        .get("screenshotUrl")
+        .and_then(|url| url.as_str())
+        .map(String::from)
+        .unwrap_or_default();
 
     Ok(LinkPreviewData {
         title: json
@@ -67,30 +92,30 @@ async fn fetch_link_preview_data(
             .and_then(|og| og.get("image").and_then(|img| img.get("url")))
             .cloned()
             .unwrap_or_default(),
+        screenshot_url: screenshot_url_from_api,
     })
 }
 
 pub async fn create_previews(ctx: &Context, msg: &Message) {
-    // Load API key from .env file
     dotenv::dotenv().ok();
     let api_key = env::var("OPENGRAPH_API_KEY").expect("OPENGRAPH_API_KEY not found in .env");
 
     for url in extract_urls_from_message(&msg.content) {
         if let Ok(preview_data) = fetch_link_preview_data(&url, &api_key).await {
-            // Create an embed with the link information
             let embed = CreateEmbed::new()
                 .title(preview_data.title.as_str().unwrap_or_default())
-                .description(preview_data.description.as_str().unwrap_or_default())
-                .url(&url)
+                .description(format!(
+                    "{}\n\nFor more information, [click here]({})",
+                    preview_data.description.as_str().unwrap_or_default(),
+                    &url
+                ))
                 .thumbnail(preview_data.image.as_str().unwrap_or_default())
-                .image(preview_data.image.as_str().unwrap_or_default())
+                .image(preview_data.screenshot_url.as_str())
                 .color(0x3498db);
-
-            // Send the embed to the channel
+            
             let builder = CreateMessage::new().embed(embed);
-            let message = msg.channel_id.send_message(&ctx.http, builder).await;
-            if let Err(why) = message {
-                eprintln!("Error sending message: {why:?}");
+            if let Err(why) = msg.channel_id.send_message(&ctx.http, builder).await {
+                eprintln!("Error sending message: {:?}", why);
             };
         }
     }
