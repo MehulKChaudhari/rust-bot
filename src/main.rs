@@ -1,10 +1,10 @@
 use dotenv::dotenv;
-use std::env;
 use serenity::{
     async_trait,
     model::{channel::Message, gateway::Ready},
     prelude::*,
 };
+use std::env;
 
 mod commands;
 
@@ -15,10 +15,16 @@ struct Handler;
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
-        if msg.content == HELP_COMMAND {
-            commands::help::help_command(&ctx, &msg).await;
-            println!("Help command executed!");
-        }
+        let handler = Handler; // Clone or move the handler here
+        tokio::spawn(async move {
+            if msg.content == HELP_COMMAND {
+                commands::help::help_command(&ctx, &msg).await;
+                println!("Help command executed!");
+            } else {
+                // Generate previews for every link in the message
+                commands::preview::create_previews(&ctx, &msg).await;
+            }
+        });
     }
 
     async fn ready(&self, _: Context, ready: Ready) {
